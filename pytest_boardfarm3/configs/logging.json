@@ -14,13 +14,13 @@
         "pexpect": {
             "class": "logging.StreamHandler",
             "formatter": "pexpect",
-            "level": "DEBUG",
+            "level": "INFO",
             "stream": "ext://sys.stderr"
         },
         "root": {
             "class": "logging.StreamHandler",
             "formatter": "root",
-            "level": "DEBUG",
+            "level": "INFO",
             "stream": "ext://sys.stderr"
         }
     },
@@ -44,7 +44,7 @@
         "handlers": [
             "root"
         ],
-        "level": "DEBUG"
+        "level": "INFO"
     },
     "version": 1
 }
