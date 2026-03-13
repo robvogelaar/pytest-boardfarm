@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import sys
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
@@ -145,6 +146,10 @@ class BoardfarmPlugin:
             yield
         finally:
             if device_manager is None:
+                # Capture has ended; separate shutdown logs from pytest output.
+                sys.stdout.flush()
+                sys.stderr.write("\n")
+                sys.stderr.flush()
                 logging_plugin.log_cli_handler.set_when("boardfarm teardown")
                 capture_boardfarm_logs(
                     logging_plugin,
@@ -199,6 +204,30 @@ class BoardfarmPlugin:
         self._test_start_time = datetime.now(tz=THIS_TZ)
         yield
         self._test_start_time = None
+
+    def _needs_stderr_newline(self) -> bool:
+        """Only with -s (stderr visible) and without log_cli (which handles it)."""
+        cfg = self._session_config
+        if cfg is None:
+            return False
+        return cfg.getoption("capture", "fd") == "no" and not cfg.getini("log_cli")
+
+    def _stderr_newline(self) -> None:
+        """Separate pytest stdout (test paths, PASSED/SKIPPED) from boardfarm stderr logs."""
+        if not self._needs_stderr_newline():
+            return
+        sys.stdout.flush()
+        sys.stderr.write("\n")
+        sys.stderr.flush()
+
+    @pytest.hookimpl(trylast=True)
+    def pytest_runtest_logstart(self) -> None:
+        self._stderr_newline()
+
+    @pytest.hookimpl(trylast=True)
+    def pytest_runtest_logreport(self, report: TestReport) -> None:
+        if report.when == "call" or (report.skipped and report.when == "setup"):
+            self._stderr_newline()
 
     @pytest.hookimpl(hookwrapper=True)
     def pytest_runtest_makereport(self, item: Item) -> Generator[None]:
